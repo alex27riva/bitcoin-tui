@@ -63,13 +63,13 @@ void poll_rpc(RpcClient& rpc, AppState& state, std::mutex& mtx,
             state.peers.clear();
             for (const auto& p : pi) {
                 PeerInfo peer;
-                peer.id            = p.value("id", 0);
-                peer.addr          = p.value("addr", "");
-                peer.network       = p.value("network", "");
-                peer.subver        = p.value("subver", "");
-                peer.inbound       = p.value("inbound", false);
-                peer.bytes_sent    = p.value("bytessent", 0LL);
-                peer.bytes_recv    = p.value("bytesrecv", 0LL);
+                peer.id              = p.value("id", 0);
+                peer.addr            = p.value("addr", "");
+                peer.network         = p.value("network", "");
+                peer.subver          = p.value("subver", "");
+                peer.inbound         = p.value("inbound", false);
+                peer.bytes_sent      = p.value("bytessent", 0LL);
+                peer.bytes_recv      = p.value("bytesrecv", 0LL);
                 peer.version         = p.value("version", 0);
                 peer.synced_blocks   = p.value("synced_blocks", 0LL);
                 peer.conntime        = p.value("conntime", 0LL);
@@ -80,7 +80,8 @@ void poll_rpc(RpcClient& rpc, AppState& state, std::mutex& mtx,
                 if (p.contains("servicesnames") && p["servicesnames"].is_array()) {
                     std::string svc;
                     for (const auto& s : p["servicesnames"]) {
-                        if (!svc.empty()) svc += ", ";
+                        if (!svc.empty())
+                            svc += ", ";
                         svc += s.get<std::string>();
                     }
                     peer.services = svc;

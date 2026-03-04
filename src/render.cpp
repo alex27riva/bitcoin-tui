@@ -103,7 +103,7 @@ Element render_dashboard(const AppState& s) {
 }
 
 // --- Mempool ----------------------------------------------------------------
-Element render_mempool(const AppState& s) {
+Element render_mempool(const AppState& s, int mempool_sel) {
     double usage_frac  = s.mempool_max > 0 ? static_cast<double>(s.mempool_usage) /
                                                 static_cast<double>(s.mempool_max)
                                            : 0.0;
@@ -146,8 +146,8 @@ Element render_mempool(const AppState& s) {
         bool anim_slide = s.block_anim_active && !s.block_anim_old.empty();
 
         // During slide: render old blocks minus the last (it slides off the right edge).
-        const std::vector<BlockStat>& src        = anim_slide ? s.block_anim_old : s.recent_blocks;
-        int                           num        = static_cast<int>(src.size());
+        const std::vector<BlockStat>& src = anim_slide ? s.block_anim_old : s.recent_blocks;
+        int                           num = static_cast<int>(src.size());
         int max_cols   = std::max(1, (Terminal::Size().dimx - 4) / (COL_WIDTH + 1));
         int max_render = std::min(anim_slide ? std::max(0, num - 1) : num, max_cols);
 
@@ -181,10 +181,12 @@ Element render_mempool(const AppState& s) {
             if (!block_cols.empty())
                 block_cols.push_back(text(" "));
 
+            bool is_selected = (i == mempool_sel);
             block_cols.push_back(
                 vbox({
                     vbox(std::move(bar)),
-                    text(fmt_height(b.height)) | center,
+                    is_selected ? text(fmt_height(b.height)) | center | inverted | bold
+                                : text(fmt_height(b.height)) | center,
                     text(fmt_int(b.txs) + " tx") | center | color(Color::GrayDark),
                     text(fmt_bytes(b.total_size)) | center | color(Color::GrayDark),
                     text(b.time > 0 ? fmt_time_ago(b.time) : "") | center | color(Color::GrayDark),
@@ -386,13 +388,14 @@ Element render_tools(const AppState& snap, const BroadcastState& bs, bool input_
     if (input_active) {
         bcast_rows.push_back(separator());
         // Wrap hex across rows of 70 chars; all rows shown.
-        constexpr int kHexCols = 70;
-        const auto&   h        = hex_str;
-        int           total    = (int)h.size();
+        constexpr int            kHexCols = 70;
+        const auto&              h        = hex_str;
+        int                      total    = (int)h.size();
         std::vector<std::string> chunks;
         for (int off = 0; off < std::max(total, 1); off += kHexCols)
             chunks.push_back(h.substr(off, std::min(kHexCols, total - off)));
-        if (chunks.empty()) chunks.push_back("");
+        if (chunks.empty())
+            chunks.push_back("");
         for (int i = 0; i < (int)chunks.size(); ++i) {
             bool is_last = i == (int)chunks.size() - 1;
             auto prefix  = i == 0 && chunks.size() == 1
@@ -423,9 +426,9 @@ Element render_tools(const AppState& snap, const BroadcastState& bs, bool input_
         } else {
             bcast_rows.push_back(text("  Error: ") | color(Color::Red) | bold);
             // Word-wrap error at ~72 chars with consistent indent (newlines treated as spaces).
-            constexpr int  kErrCols    = 72;
-            constexpr auto kIndent     = "  ";
-            constexpr int  kIndentLen  = 2;
+            constexpr int      kErrCols   = 72;
+            constexpr auto     kIndent    = "  ";
+            constexpr int      kIndentLen = 2;
             std::istringstream ss(bs.result_error);
             std::string        word, cur = kIndent;
             while (ss >> word) {

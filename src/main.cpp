@@ -206,6 +206,9 @@ static int run(int argc, char* argv[]) {
     int  peer_selected    = -1;
     bool peer_detail_open = false;
 
+    // Mempool tab: selected block index (-1 = none, 0 = newest/leftmost)
+    int mempool_sel = -1;
+
     std::atomic<bool> running{true};
 
     // FTXUI screen
@@ -358,7 +361,7 @@ static int run(int argc, char* argv[]) {
             }
 
             // Mempool content is always the background layer
-            auto base = vbox({render_mempool(snap), filler()}) | flex;
+            auto base = vbox({render_mempool(snap, mempool_sel), filler()}) | flex;
 
             // No search yet — just show the mempool
             if (ss.txid.empty()) {
@@ -671,6 +674,13 @@ static int run(int argc, char* argv[]) {
             : overlay_is_confirmed_tx
                 ? hbox({text("  [↑/↓] navigate  [Esc] dismiss  [q] quit ") | color(Color::Yellow)})
             : overlay_visible ? hbox({text("  [Esc] dismiss  [q] quit ") | color(Color::Yellow)})
+            : (tab_index == 1 && mempool_sel >= 0)
+                ? hbox({text("  [↵] view block  [←/→] navigate  [Esc] deselect  [q] quit ") |
+                        color(Color::Yellow)})
+            : (tab_index == 1)
+                ? hbox({refresh_indicator,
+                        text("  [↓] select block  [Tab/←/→] switch  [/] search  [q] quit ") |
+                            color(Color::GrayDark)})
             : (tab_index == 3 && peer_detail_open)
                 ? hbox({text("  [Esc] back  [q] quit ") | color(Color::Yellow)})
             : (tab_index == 3 && peer_selected >= 0)
@@ -922,6 +932,60 @@ static int run(int argc, char* argv[]) {
                 peer_detail_open = true;
                 screen.PostEvent(Event::Custom);
                 return true;
+            }
+        }
+        // Mempool tab: block navigation (↓ to enter, ←/→ to navigate, Enter to view)
+        if (tab_index == 1) {
+            bool has_overlay;
+            {
+                std::lock_guard lock(search_mtx);
+                has_overlay = !search_state.txid.empty();
+            }
+            if (!has_overlay) {
+                // arrow-down enters block navigation mode
+                if (event == Event::ArrowDown && mempool_sel < 0) {
+                    int n;
+                    {
+                        std::lock_guard lock(state_mtx);
+                        n = static_cast<int>(state.recent_blocks.size());
+                    }
+                    if (n > 0) {
+                        mempool_sel = 0;
+                        screen.PostEvent(Event::Custom);
+                        return true;
+                    }
+                }
+                // arrow-left/arrow-right navigate blocks once in block navigation mode
+                if (mempool_sel >= 0 && (event == Event::ArrowLeft || event == Event::ArrowRight)) {
+                    int n;
+                    {
+                        std::lock_guard lock(state_mtx);
+                        n = static_cast<int>(state.recent_blocks.size());
+                    }
+                    if (event == Event::ArrowLeft)
+                        mempool_sel = std::max(mempool_sel - 1, 0);
+                    else
+                        mempool_sel = std::min(mempool_sel + 1, n - 1);
+                    screen.PostEvent(Event::Custom);
+                    return true;
+                }
+                if (event == Event::Return && mempool_sel >= 0) {
+                    std::string height_str;
+                    {
+                        std::lock_guard lock(state_mtx);
+                        if (mempool_sel < static_cast<int>(state.recent_blocks.size()))
+                            height_str = std::to_string(state.recent_blocks[mempool_sel].height);
+                    }
+                    if (!height_str.empty()) {
+                        trigger_tx_search(height_str, false);
+                        return true;
+                    }
+                }
+                if (event == Event::Escape && mempool_sel >= 0) {
+                    mempool_sel = -1;
+                    screen.PostEvent(Event::Custom);
+                    return true;
+                }
             }
         }
         // Normal mode

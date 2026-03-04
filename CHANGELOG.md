@@ -2,6 +2,11 @@
 
 All notable changes to bitcoin-tui are documented here.
 
+## [0.6.1] - 2026-03-04
+
+### Added
+- **Block navigation in Mempool tab** - press `down-arrow` to enter block selection mode; use `left/right` to move between blocks (newest first); press `Enter` to open the full block detail overlay (same as searching by height); press `Esc` to deselect and return to normal tab navigation
+
 ## [0.6.0] - 2026-03-04
 
 ### Added

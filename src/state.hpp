@@ -34,15 +34,15 @@ struct PeerInfo {
     double      ping_ms       = -1.0;
     int         version       = 0;
     int64_t     synced_blocks = 0;
-    int64_t     conntime         = 0;
+    int64_t     conntime      = 0;
     std::string services;
-    int64_t     startingheight   = 0;
-    bool        bip152_hb_from   = false;
-    bool        bip152_hb_to     = false;
+    int64_t     startingheight = 0;
+    bool        bip152_hb_from = false;
+    bool        bip152_hb_to   = false;
     std::string connection_type;
     std::string transport;
-    int64_t     addr_processed   = 0;
-    double      min_ping_ms      = -1.0;
+    int64_t     addr_processed = 0;
+    double      min_ping_ms    = -1.0;
 };
 
 struct AppState {
