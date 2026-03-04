@@ -603,12 +603,13 @@ static int run(int argc, char* argv[]) {
         case 3:
             if (peer_detail_open && peer_selected >= 0 &&
                 peer_selected < static_cast<int>(snap.peers.size())) {
-                tab_content = vbox({
-                                  filler(),
-                                  hbox({filler(), render_peer_detail(snap.peers[peer_selected]), filler()}),
-                                  filler(),
-                              }) |
-                              flex;
+                tab_content =
+                    vbox({
+                        filler(),
+                        hbox({filler(), render_peer_detail(snap.peers[peer_selected]), filler()}),
+                        filler(),
+                    }) |
+                    flex;
             } else {
                 tab_content = render_peers(snap, peer_selected);
             }
@@ -669,13 +670,13 @@ static int run(int argc, char* argv[]) {
                         color(Color::Yellow)})
             : overlay_is_confirmed_tx
                 ? hbox({text("  [↑/↓] navigate  [Esc] dismiss  [q] quit ") | color(Color::Yellow)})
-            : overlay_visible
-                ? hbox({text("  [Esc] dismiss  [q] quit ") | color(Color::Yellow)})
+            : overlay_visible ? hbox({text("  [Esc] dismiss  [q] quit ") | color(Color::Yellow)})
             : (tab_index == 3 && peer_detail_open)
                 ? hbox({text("  [Esc] back  [q] quit ") | color(Color::Yellow)})
             : (tab_index == 3 && peer_selected >= 0)
-                ? hbox({refresh_indicator, text("  [↑/↓] navigate  [↵] details  [/] search  [q] quit ") |
-                                               color(Color::GrayDark)})
+                ? hbox({refresh_indicator,
+                        text("  [↑/↓] navigate  [↵] details  [/] search  [q] quit ") |
+                            color(Color::GrayDark)})
                 : hbox({refresh_indicator, text("  [Tab/←/→] switch  [/] search  [q] quit ") |
                                                color(Color::GrayDark)});
 
