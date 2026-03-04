@@ -70,10 +70,32 @@ void poll_rpc(RpcClient& rpc, AppState& state, std::mutex& mtx,
                 peer.inbound       = p.value("inbound", false);
                 peer.bytes_sent    = p.value("bytessent", 0LL);
                 peer.bytes_recv    = p.value("bytesrecv", 0LL);
-                peer.version       = p.value("version", 0);
-                peer.synced_blocks = p.value("synced_blocks", 0LL);
+                peer.version         = p.value("version", 0);
+                peer.synced_blocks   = p.value("synced_blocks", 0LL);
+                peer.conntime        = p.value("conntime", 0LL);
+                peer.startingheight  = p.value("startingheight", 0LL);
+                peer.connection_type = p.value("connection_type", "");
+                peer.transport       = p.value("transport_protocol_type", "");
+                peer.addr_processed  = p.value("addr_processed", 0LL);
+                if (p.contains("servicesnames") && p["servicesnames"].is_array()) {
+                    std::string svc;
+                    for (const auto& s : p["servicesnames"]) {
+                        if (!svc.empty()) svc += ", ";
+                        svc += s.get<std::string>();
+                    }
+                    peer.services = svc;
+                }
                 if (p.contains("pingtime") && p["pingtime"].is_number()) {
                     peer.ping_ms = p["pingtime"].get<double>() * 1000.0;
+                }
+                if (p.contains("minping") && p["minping"].is_number()) {
+                    peer.min_ping_ms = p["minping"].get<double>() * 1000.0;
+                }
+                if (p.contains("bip152_hb_from") && p["bip152_hb_from"].is_bool()) {
+                    peer.bip152_hb_from = p["bip152_hb_from"].get<bool>();
+                }
+                if (p.contains("bip152_hb_to") && p["bip152_hb_to"].is_bool()) {
+                    peer.bip152_hb_to = p["bip152_hb_to"].get<bool>();
                 }
                 state.peers.push_back(std::move(peer));
             }

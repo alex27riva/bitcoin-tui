@@ -14,6 +14,7 @@ ftxui::Element label_value(const std::string& lbl, const std::string& val,
 ftxui::Element render_dashboard(const AppState& s);
 ftxui::Element render_mempool(const AppState& s);
 ftxui::Element render_network(const AppState& s);
-ftxui::Element render_peers(const AppState& s);
+ftxui::Element render_peers(const AppState& s, int selected = -1);
+ftxui::Element render_peer_detail(const PeerInfo& p);
 ftxui::Element render_tools(const AppState& snap, const BroadcastState& bs, bool input_active,
                             const std::string& hex_str, int tools_sel);

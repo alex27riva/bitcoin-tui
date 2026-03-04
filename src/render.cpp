@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cmath>
+#include <ctime>
 #include <iomanip>
 #include <sstream>
 
@@ -228,7 +229,7 @@ Element render_network(const AppState& s) {
 }
 
 // --- Peers ------------------------------------------------------------------
-Element render_peers(const AppState& s) {
+Element render_peers(const AppState& s, int selected) {
     if (s.peers.empty()) {
         return vbox({
                    text("No peers connected.") | color(Color::GrayDark) | center,
@@ -257,7 +258,8 @@ Element render_peers(const AppState& s) {
                    color(Color::Gold1));
     rows.push_back(separator());
 
-    for (const auto& p : s.peers) {
+    for (int idx = 0; idx < static_cast<int>(s.peers.size()); ++idx) {
+        const auto& p        = s.peers[idx];
         std::string ping_str = p.ping_ms >= 0.0 ? [&] {
             std::ostringstream ss;
             ss << std::fixed << std::setprecision(1) << p.ping_ms;
@@ -268,7 +270,7 @@ Element render_peers(const AppState& s) {
         Color       io_color = p.inbound ? Color::Cyan : Color::Green;
         std::string net_str  = p.network.empty() ? "?" : p.network.substr(0, 4);
 
-        rows.push_back(hbox({
+        auto row = hbox({
             text(std::to_string(p.id)) | size(WIDTH, EQUAL, 5),
             text(p.addr) | flex,
             text(net_str) | size(WIDTH, EQUAL, 5),
@@ -277,13 +279,79 @@ Element render_peers(const AppState& s) {
             rcell(text(fmt_bytes(p.bytes_recv)), 10),
             rcell(text(fmt_bytes(p.bytes_sent)), 10),
             rcell(text(fmt_height(p.synced_blocks)), 9),
-        }));
+        });
+        if (idx == selected)
+            row = std::move(row) | inverted;
+        rows.push_back(std::move(row));
     }
 
     return vbox({
                vbox(std::move(rows)) | border | flex,
            }) |
            flex;
+}
+
+Element render_peer_detail(const PeerInfo& p) {
+    auto    now_secs = static_cast<int64_t>(std::time(nullptr));
+    int64_t uptime   = p.conntime > 0 ? now_secs - p.conntime : 0;
+
+    std::string ping_str = p.ping_ms >= 0.0 ? [&] {
+        std::ostringstream ss;
+        ss << std::fixed << std::setprecision(1) << p.ping_ms;
+        return ss.str() + " ms";
+    }()
+                                            : "—";
+
+    std::string min_ping_str = p.min_ping_ms >= 0.0 ? [&] {
+        std::ostringstream ss;
+        ss << std::fixed << std::setprecision(1) << p.min_ping_ms;
+        return ss.str() + " ms";
+    }()
+                                                    : "—";
+
+    std::string hb;
+    if (p.bip152_hb_from && p.bip152_hb_to)
+        hb = "both";
+    else if (p.bip152_hb_from)
+        hb = "from";
+    else if (p.bip152_hb_to)
+        hb = "to";
+    else
+        hb = "no";
+
+    Elements detail_rows = {
+        label_value("  Address     : ", p.addr),
+        label_value("  Direction   : ", p.inbound ? "inbound" : "outbound",
+                    p.inbound ? Color::Cyan : Color::Green),
+        label_value("  Network     : ", p.network.empty() ? "?" : p.network),
+        label_value("  User agent  : ", p.subver),
+        label_value("  Version     : ", std::to_string(p.version)),
+        label_value("  Services    : ", p.services.empty() ? "—" : p.services),
+        separator(),
+        label_value("  Ping        : ", ping_str),
+        label_value("  Min ping    : ", min_ping_str),
+        label_value("  Connected   : ", uptime > 0 ? fmt_age(uptime) : "—"),
+        label_value("  Conn type   : ", p.connection_type.empty() ? "—" : p.connection_type),
+        label_value("  Transport   : ", p.transport.empty() ? "—" : p.transport),
+        separator(),
+        label_value("  Recv        : ", fmt_bytes(p.bytes_recv)),
+        label_value("  Sent        : ", fmt_bytes(p.bytes_sent)),
+        label_value("  Height      : ", fmt_height(p.synced_blocks)),
+        label_value("  Start height: ", fmt_height(p.startingheight)),
+        label_value("  HB compact  : ", hb),
+        label_value("  Addrs proc  : ", fmt_int(p.addr_processed)),
+    };
+
+    return vbox({
+               hbox({
+                   text(" Peer " + std::to_string(p.id) + " ") | bold | color(Color::Gold1),
+                   filler(),
+                   text(" " + p.addr + " ") | color(Color::GrayDark),
+               }),
+               separator(),
+               vbox(std::move(detail_rows)),
+           }) |
+           border | size(WIDTH, EQUAL, 70);
 }
 
 // --- Tools ------------------------------------------------------------------

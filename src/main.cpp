@@ -202,6 +202,10 @@ static int run(int argc, char* argv[]) {
     std::thread       broadcast_thread;
     int               tools_sel = 0; // 0=Broadcast, 1=result txid row (when present)
 
+    // Peer selection state
+    int  peer_selected    = -1;
+    bool peer_detail_open = false;
+
     std::atomic<bool> running{true};
 
     // FTXUI screen
@@ -597,7 +601,18 @@ static int run(int argc, char* argv[]) {
             tab_content = render_network(snap);
             break;
         case 3:
-            tab_content = render_peers(snap);
+            if (peer_detail_open && peer_selected >= 0 &&
+                peer_selected < static_cast<int>(snap.peers.size())) {
+                tab_content =
+                    vbox({
+                        filler(),
+                        hbox({filler(), render_peer_detail(snap.peers[peer_selected]), filler()}),
+                        filler(),
+                    }) |
+                    flex;
+            } else {
+                tab_content = render_peers(snap, peer_selected);
+            }
             break;
         case 4: {
             BroadcastState bs;
@@ -655,8 +670,13 @@ static int run(int argc, char* argv[]) {
                         color(Color::Yellow)})
             : overlay_is_confirmed_tx
                 ? hbox({text("  [↑/↓] navigate  [Esc] dismiss  [q] quit ") | color(Color::Yellow)})
-            : overlay_visible
-                ? hbox({text("  [Esc] dismiss  [q] quit ") | color(Color::Yellow)})
+            : overlay_visible ? hbox({text("  [Esc] dismiss  [q] quit ") | color(Color::Yellow)})
+            : (tab_index == 3 && peer_detail_open)
+                ? hbox({text("  [Esc] back  [q] quit ") | color(Color::Yellow)})
+            : (tab_index == 3 && peer_selected >= 0)
+                ? hbox({refresh_indicator,
+                        text("  [↑/↓] navigate  [↵] details  [/] search  [q] quit ") |
+                            color(Color::GrayDark)})
                 : hbox({refresh_indicator, text("  [Tab/←/→] switch  [/] search  [q] quit ") |
                                                color(Color::GrayDark)});
 
@@ -870,6 +890,38 @@ static int run(int argc, char* argv[]) {
                     return true;
                 }
                 return false;
+            }
+        }
+        // Peers tab: detail overlay mode
+        if (tab_index == 3 && peer_detail_open) {
+            if (event == Event::Escape) {
+                peer_detail_open = false;
+                screen.PostEvent(Event::Custom);
+                return true;
+            }
+            if (event == Event::Character('q')) {
+                screen.ExitLoopClosure()();
+                return true;
+            }
+            return false;
+        }
+        // Peers tab: list navigation
+        if (tab_index == 3) {
+            if (event == Event::ArrowDown || event == Event::ArrowUp) {
+                int n = static_cast<int>(state.peers.size());
+                if (n > 0) {
+                    if (event == Event::ArrowDown)
+                        peer_selected = std::min(peer_selected + 1, n - 1);
+                    else
+                        peer_selected = std::max(peer_selected - 1, 0);
+                    screen.PostEvent(Event::Custom);
+                    return true;
+                }
+            }
+            if (event == Event::Return && peer_selected >= 0) {
+                peer_detail_open = true;
+                screen.PostEvent(Event::Custom);
+                return true;
             }
         }
         // Normal mode

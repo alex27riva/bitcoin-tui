@@ -2,6 +2,12 @@
 
 All notable changes to bitcoin-tui are documented here.
 
+## [0.5.0] - 2026-03-04
+
+### Added
+- **Peer detail overlay** - in the Peers tab, navigate with `↑/↓` to select a peer and press `Enter` to open a detail overlay showing address, direction, network, user agent, protocol version, services, ping, min ping, uptime, connection type, transport, bytes sent/received, tip height, starting height, BIP-152 compact block status, and addresses processed
+- Extended `PeerInfo` with additional fields from `getpeerinfo`: `conntime`, `startingheight`, `connection_type`, `transport_protocol_type`, `servicesnames`, `minping`, `bip152_hb_from`, `bip152_hb_to`, `addr_processed`
+
 ## [0.4.0] - 2026-03-03
 
 ### Added
