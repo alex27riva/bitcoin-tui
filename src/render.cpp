@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <limits>
 #include <sstream>
+#include <string>
 
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/screen/color.hpp>
@@ -34,6 +35,31 @@ Element label_value(const std::string& lbl, const std::string& val, Color val_co
         text(lbl) | color(Color::GrayDark),
         text(val) | color(val_color) | bold,
     });
+}
+
+static Element mempool_stats_box(const AppState& s) {
+    double usage_frac  = s.mempool_max > 0 ? static_cast<double>(s.mempool_usage) /
+                                                static_cast<double>(s.mempool_max)
+                                           : 0.0;
+    Color  usage_color = usage_frac > 0.8   ? Color::Red
+                         : usage_frac > 0.5 ? Color::Yellow
+                                            : Color::Cyan;
+    return section_box(
+        "Mempool",
+        {
+            label_value("  Transactions    : ", fmt_int(s.mempool_tx)),
+            label_value("  Virtual size    : ", fmt_bytes(s.mempool_bytes)),
+            label_value("  Total fees      : ", fmt_btc(s.total_fee)),
+            label_value("  Min relay fee   : ", fmt_satsvb(s.mempool_min_fee)),
+            hbox({
+                text("  Memory usage    : ") | color(Color::GrayDark),
+                text(fmt_bytes(s.mempool_usage) + " / " + fmt_bytes(s.mempool_max)) | bold,
+                text("  "),
+                gauge(static_cast<float>(usage_frac)) | flex | color(usage_color),
+                text(" " + std::to_string(static_cast<int>(usage_frac * 100)) + "%  ") | bold |
+                    color(usage_color),
+            }),
+        });
 }
 
 // --- Dashboard --------------------------------------------------------------
@@ -74,24 +100,7 @@ Element render_dashboard(const AppState& s) {
                        label_value("  Relay fee   : ", fmt_satsvb(s.relay_fee)),
                    });
 
-    // Mempool section
-    double usage_frac      = s.mempool_max > 0 ? static_cast<double>(s.mempool_usage) /
-                                                static_cast<double>(s.mempool_max)
-                                               : 0.0;
-    auto   mempool_section = section_box(
-        "Mempool",
-        {
-            label_value("  Transactions: ", fmt_int(s.mempool_tx)),
-            label_value("  Size        : ", fmt_bytes(s.mempool_bytes)),
-            label_value("  Total fee   : ", fmt_btc(s.total_fee, 4)),
-            label_value("  Min fee     : ", fmt_satsvb(s.mempool_min_fee)),
-            hbox({
-                text("  Memory      : ") | color(Color::GrayDark),
-                gauge(static_cast<float>(usage_frac)) | flex |
-                    color(usage_frac > 0.8 ? Color::Red : Color::Cyan),
-                text(" " + fmt_bytes(s.mempool_usage) + " / " + fmt_bytes(s.mempool_max)) | bold,
-            }),
-        });
+    auto mempool_section = mempool_stats_box(s);
 
     return vbox({
                hbox({
@@ -105,33 +114,7 @@ Element render_dashboard(const AppState& s) {
 
 // --- Mempool ----------------------------------------------------------------
 Element render_mempool(const AppState& s, int mempool_sel) {
-    double usage_frac  = s.mempool_max > 0 ? static_cast<double>(s.mempool_usage) /
-                                                static_cast<double>(s.mempool_max)
-                                           : 0.0;
-    Color  usage_color = usage_frac > 0.8   ? Color::Red
-                         : usage_frac > 0.5 ? Color::Yellow
-                                            : Color::Cyan;
-
-    auto stats_section = section_box(
-        "Mempool", {
-                       label_value("  Transactions    : ", fmt_int(s.mempool_tx)),
-                       label_value("  Virtual size    : ", fmt_bytes(s.mempool_bytes)),
-                       label_value("  Total fees      : ", fmt_btc(s.total_fee)),
-                       label_value("  Min relay fee   : ", fmt_satsvb(s.mempool_min_fee)),
-                       separator(),
-                       text("  Memory usage") | color(Color::GrayDark),
-                       hbox({
-                           text("  "),
-                           gauge(static_cast<float>(usage_frac)) | flex | color(usage_color),
-                           text("  "),
-                       }),
-                       hbox({
-                           text("  Used : ") | color(Color::GrayDark),
-                           text(fmt_bytes(s.mempool_usage)) | bold,
-                           text("  /  Max : ") | color(Color::GrayDark),
-                           text(fmt_bytes(s.mempool_max)) | bold,
-                       }),
-                   });
+    auto stats_section = mempool_stats_box(s);
 
     // Block visualization — vertical fill bars, one column per block.
     Element blocks_section;

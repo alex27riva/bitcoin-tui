@@ -1138,7 +1138,7 @@ static int run(int argc, char* argv[]) {
                         color(Color::Yellow)})
             : (tab_index == 1)
                 ? hbox({refresh_indicator,
-                        text("  [↓] select block  [Tab/←/→] switch  [/] search  [q] quit ") |
+                        text("  [↓] select  [Tab/←/→] switch  [/] search  [q] quit ") |
                             color(Color::GrayDark)})
             : (tab_index == 3 && peer_selected >= 0)
                 ? hbox({refresh_indicator, text("  [\u2191/\u2193] navigate  [\u23ce] details  [a] "
