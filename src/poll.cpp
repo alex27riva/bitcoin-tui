@@ -73,7 +73,6 @@ void poll_rpc(RpcClient& rpc, AppState& state, std::mutex& mtx,
                 peer.version         = p.value("version", 0);
                 peer.synced_blocks   = p.value("synced_blocks", 0LL);
                 peer.conntime        = p.value("conntime", 0LL);
-                peer.startingheight  = p.value("startingheight", 0LL);
                 peer.connection_type = p.value("connection_type", "");
                 peer.transport       = p.value("transport_protocol_type", "");
                 peer.addr_processed  = p.value("addr_processed", 0LL);

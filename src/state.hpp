@@ -36,7 +36,6 @@ struct PeerInfo {
     int64_t     synced_blocks = 0;
     int64_t     conntime      = 0;
     std::string services;
-    int64_t     startingheight = 0;
     bool        bip152_hb_from = false;
     bool        bip152_hb_to   = false;
     std::string connection_type;

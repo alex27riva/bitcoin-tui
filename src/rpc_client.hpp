@@ -17,7 +17,7 @@ struct RpcConfig {
     int         port = 8332;
     std::string user;
     std::string password;
-    int         timeout_seconds = 10;
+    int         timeout_seconds = 30;
 };
 
 class RpcClient {

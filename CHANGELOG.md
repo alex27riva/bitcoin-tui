@@ -2,6 +2,16 @@
 
 All notable changes to bitcoin-tui are documented here.
 
+## [0.7.1] - 2026-03-17
+
+### Changed
+- RPC client now uses HTTP/1.1 with `Connection: close` to fix empty-response errors against Bitcoin Core
+- Default RPC timeout increased from 10s to 30s to accommodate slow responses during initial startup (mempool load, IBD catch-up)
+- Removed `Start height` field from peer detail overlay — `startingheight` is deprecated in Bitcoin Core v31 and will be removed in v32
+
+### Fixed
+- Improved RPC error messages: timeout and connection-closed failures are now reported distinctly instead of both showing as "Empty response from Bitcoin Core"
+
 ## [0.7.0] - 2026-03-09
 
 ### Added

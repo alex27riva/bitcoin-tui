@@ -376,7 +376,6 @@ Element render_peer_detail(const PeerInfo& p, const PeerActionResult& action, in
         label_value("  Recv        : ", fmt_bytes(p.bytes_recv)),
         label_value("  Sent        : ", fmt_bytes(p.bytes_sent)),
         label_value("  Height      : ", fmt_height(p.synced_blocks)),
-        label_value("  Start height: ", fmt_height(p.startingheight)),
         label_value("  HB compact  : ", hb),
         label_value("  Addrs proc  : ", fmt_int(p.addr_processed)),
     };

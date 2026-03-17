@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <cerrno>
 #include <cstring>
 
 RpcClient::RpcClient(RpcConfig config) : config_(std::move(config)) {}
@@ -81,9 +82,10 @@ std::string RpcClient::http_post(const std::string& body) {
     }
     freeaddrinfo(res);
 
-    // Build HTTP/1.0 request (avoids chunked transfer encoding)
+    // Build HTTP/1.1 request with Connection: close so the server closes after
+    // responding, allowing recv() to reach EOF without waiting for a timeout.
     const std::string auth    = base64_encode(config_.user + ":" + config_.password);
-    const std::string request = "POST / HTTP/1.0\r\n"
+    const std::string request = "POST / HTTP/1.1\r\n"
                                 "Host: " +
                                 config_.host +
                                 "\r\n"
@@ -94,6 +96,7 @@ std::string RpcClient::http_post(const std::string& body) {
                                 "Content-Length: " +
                                 std::to_string(body.size()) +
                                 "\r\n"
+                                "Connection: close\r\n"
                                 "\r\n" +
                                 body;
 
@@ -115,10 +118,18 @@ std::string RpcClient::http_post(const std::string& body) {
     while ((n = recv(sock, buf, sizeof(buf), 0)) > 0) {
         response.append(buf, static_cast<size_t>(n));
     }
+    const int recv_errno = errno;
     close(sock);
 
     if (response.empty()) {
-        throw RpcError("Empty response from Bitcoin Core");
+        if (n < 0 && (recv_errno == EAGAIN || recv_errno == EWOULDBLOCK))
+            throw RpcError("RPC timeout — Bitcoin Core did not respond within " +
+                           std::to_string(config_.timeout_seconds) + "s");
+        else if (n < 0)
+            throw RpcError("recv() failed: " + std::string(strerror(recv_errno)));
+        else
+            throw RpcError(
+                "Empty response from Bitcoin Core — connection closed before any data was sent");
     }
 
     // Extract HTTP status
