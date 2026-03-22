@@ -33,30 +33,32 @@ using namespace ftxui;
 // Cookie authentication helpers
 // ============================================================================
 
-// Returns the platform-specific default path to Bitcoin Core's .cookie file.
-// network is one of: "main", "testnet3", "signet", "regtest".
-static std::string cookie_default_path(const std::string& network, const std::string& datadir) {
-    std::string base;
-    if (!datadir.empty()) {
-        base = datadir;
-    } else {
-        const char* home = std::getenv("HOME");
-        if (!home)
-            throw std::runtime_error("HOME not set; use --datadir or --cookie to locate .cookie");
+// Returns the platform-specific default Bitcoin data directory.
+static std::string default_datadir() {
+    const char* home = std::getenv("HOME");
+    if (!home)
+        throw std::runtime_error("HOME not set; use --datadir or --cookie to locate .cookie");
 #ifdef __APPLE__
-        base = std::string(home) + "/Library/Application Support/Bitcoin";
+    return std::string(home) + "/Library/Application Support/Bitcoin";
 #else
-        base = std::string(home) + "/.bitcoin";
+    return std::string(home) + "/.bitcoin";
 #endif
-    }
-    std::string sub;
+}
+
+// Returns the chain subdirectory name for the given network.
+static std::string network_subdir(const std::string& network) {
     if (network == "testnet3")
-        sub = "testnet3/";
-    else if (network == "signet")
-        sub = "signet/";
-    else if (network == "regtest")
-        sub = "regtest/";
-    return base + "/" + sub + ".cookie";
+        return "testnet3/";
+    if (network == "signet")
+        return "signet/";
+    if (network == "regtest")
+        return "regtest/";
+    return "";
+}
+
+// Returns the path to the .cookie file for the given network and data directory.
+static std::string cookie_path(const std::string& network, const std::string& datadir) {
+    return datadir + "/" + network_subdir(network) + ".cookie";
 }
 
 // Reads a Bitcoin Core cookie file and populates cfg.user / cfg.password.
@@ -163,10 +165,13 @@ static int run(int argc, char* argv[]) {
         }
     }
 
+    // Resolve data directory (needed for cookie path and overlay display).
+    if (datadir.empty())
+        datadir = default_datadir();
+
     // Apply cookie authentication unless explicit -u/-P credentials were given.
     if (!explicit_creds) {
-        std::string path =
-            cookie_file.empty() ? cookie_default_path(network, datadir) : cookie_file;
+        std::string path = cookie_file.empty() ? cookie_path(network, datadir) : cookie_file;
         try {
             apply_cookie(cfg, path);
         } catch (const std::exception& e) {
@@ -1199,8 +1204,42 @@ static int run(int argc, char* argv[]) {
                 }(),
             }) | border,
 
-            // Content
-            tab_content | flex,
+            // Content — show connection overlay when disconnected
+            !snap.connected
+                ? vbox({
+                      filler(),
+                      hbox({filler(),
+                            vbox({
+                                hbox({text(" Connection Failed ") | bold | color(Color::Red),
+                                      filler()}),
+                                separator(),
+                                text(""),
+                                hbox({text("  Network  : ") | color(Color::GrayDark),
+                                      text(network) | color(Color::White)}),
+                                hbox({text("  Endpoint : ") | color(Color::GrayDark),
+                                      text(cfg.host + ":" + std::to_string(cfg.port)) |
+                                          color(Color::White)}),
+                                hbox({text("  Datadir  : ") | color(Color::GrayDark),
+                                      text(datadir) | color(Color::White)}),
+                                hbox({text("  Auth     : ") | color(Color::GrayDark),
+                                      text(explicit_creds
+                                               ? cfg.user + ":<hidden>"
+                                               : "cookie (" + cookie_path(network, datadir) + ")") |
+                                          color(Color::White)}),
+                                text(""),
+                                text("  Error:") | color(Color::GrayDark),
+                                paragraph("  " + (snap.error_message.empty()
+                                                      ? std::string("connecting…")
+                                                      : snap.error_message)) |
+                                    color(Color::Yellow),
+                                separator(),
+                                hbox({text("  "), text(" Quit ") | inverted}),
+                            }) | border |
+                                size(WIDTH, EQUAL, 60),
+                            filler()}),
+                      filler(),
+                  }) | flex
+                : tab_content | flex,
 
             // Status bar
             hbox({status_left, filler(), status_right}) | border,
@@ -1209,6 +1248,18 @@ static int run(int argc, char* argv[]) {
 
     // Event handling: '/' activates global search; Escape/Enter commit or cancel
     auto event_handler = CatchEvent(renderer, [&](const Event& event) -> bool {
+        // Connection overlay: only quit actions are available
+        {
+            std::lock_guard lock(state_mtx);
+            if (!state.connected) {
+                if (event == Event::Escape || event == Event::Character('q') ||
+                    event == Event::Return) {
+                    screen.ExitLoopClosure()();
+                    return true;
+                }
+                return false;
+            }
+        }
         if (global_search_active) {
             if (event == Event::Escape) {
                 global_search_active = false;
