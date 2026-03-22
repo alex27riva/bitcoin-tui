@@ -214,10 +214,9 @@ static int run(int argc, char* argv[]) {
         }
     }
 
-    // State + RPC client
+    // State
     AppState   state;
     std::mutex state_mtx;
-    RpcClient  rpc(cfg, auth);
 
     // Transaction search state
     TxSearchState              search_state;
@@ -1829,6 +1828,7 @@ static int run(int argc, char* argv[]) {
 
             auto do_shutdown = [&]() {
                 try {
+                    RpcClient rpc(cfg, auth);
                     rpc.call("stop", {});
                 } catch (...) { // NOLINT(bugprone-empty-catch)
                 }
@@ -1952,6 +1952,8 @@ static int run(int argc, char* argv[]) {
 
     // Background polling thread
     std::thread poll_thread([&] {
+        RpcClient rpc(cfg, auth);
+
         // Initial fetch immediately
         {
             std::lock_guard lock(state_mtx);
@@ -1980,6 +1982,22 @@ static int run(int argc, char* argv[]) {
                 state.refreshing = true;
             }
             screen.PostEvent(Event::Custom);
+
+            // Re-read cookie when disconnected (bitcoind restart creates a new one).
+            if (!explicit_creds) {
+                std::lock_guard lock(state_mtx);
+                if (!state.connected) {
+                    std::string path =
+                        cookie_file.empty() ? cookie_path(network, datadir) : cookie_file;
+                    auth.update([&](auto& a) {
+                        try {
+                            apply_cookie(a, path);
+                            rpc = RpcClient(cfg, a);
+                        } catch (...) { // NOLINT(bugprone-empty-catch)
+                        }
+                    });
+                }
+            }
 
             poll_rpc(rpc, state, state_mtx, wake_screen);
 
