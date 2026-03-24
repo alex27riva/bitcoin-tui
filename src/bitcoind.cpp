@@ -3,8 +3,29 @@
 #include <array>
 #include <cstdio>
 #include <cstring>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+std::string find_bitcoind() {
+    const char* path_env = getenv("PATH");
+    if (!path_env)
+        return {};
+
+    std::string            path(path_env);
+    std::string::size_type start = 0;
+    while (start < path.size()) {
+        auto end = path.find(':', start);
+        if (end == std::string::npos)
+            end = path.size();
+        std::string candidate = path.substr(start, end - start) + "/bitcoind";
+        struct stat st{};
+        if (stat(candidate.c_str(), &st) == 0 && (st.st_mode & S_IXUSR))
+            return candidate;
+        start = end + 1;
+    }
+    return {};
+}
 
 int launch_bitcoind(const std::string& cmd, const std::string& datadir, const std::string& network,
                     const OutputCallback& on_output) {
@@ -28,7 +49,6 @@ int launch_bitcoind(const std::string& cmd, const std::string& datadir, const st
             cmdline += ' ';
         cmdline += s;
     }
-    on_output("$ " + cmdline);
 
     std::vector<char*> argv;
     for (auto& s : args_storage)
@@ -56,8 +76,8 @@ int launch_bitcoind(const std::string& cmd, const std::string& datadir, const st
 
         execvp(argv[0], argv.data());
         // If execvp returns, it failed.
-        std::string err = std::string(argv[0]) + ": " + strerror(errno) + "\n";
-        write(STDERR_FILENO, err.c_str(), err.size());
+        std::string           err = std::string(argv[0]) + ": " + strerror(errno) + "\n";
+        [[maybe_unused]] auto _   = write(STDERR_FILENO, err.c_str(), err.size());
         _exit(127);
     }
 

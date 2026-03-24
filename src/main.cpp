@@ -224,10 +224,14 @@ static int run(int argc, char* argv[]) {
     }
 
     // Determine if we can offer to launch bitcoind.
-    // Only when connecting to localhost (default or explicit loopback), or --bitcoind was given.
-    bool can_launch = !bitcoind_cmd.empty() || !explicit_host;
-    if (can_launch && bitcoind_cmd.empty())
-        bitcoind_cmd = "bitcoind";
+    // Requires either an explicit --bitcoind path, or bitcoind found in PATH (localhost only).
+    bool can_launch = false;
+    if (!bitcoind_cmd.empty()) {
+        can_launch = true; // explicit --bitcoind path provided
+    } else if (!explicit_host) {
+        bitcoind_cmd = find_bitcoind(); // search PATH
+        can_launch   = !bitcoind_cmd.empty();
+    }
 
     // State
     AppState   state;
@@ -1301,14 +1305,11 @@ static int run(int argc, char* argv[]) {
                                         }
                                         return vbox(std::move(rows));
                                     }
-                                    Elements rows;
-                                    rows.push_back(text("  Error:") | color(Color::GrayDark));
-                                    rows.push_back(
-                                        paragraph("  " + (snap.error_message.empty()
-                                                              ? std::string("connecting…")
-                                                              : snap.error_message)) |
-                                        color(Color::Yellow));
-                                    return vbox(std::move(rows));
+                                    return hbox({text(" Error   : ") | color(Color::GrayDark),
+                                                 paragraph(snap.error_message.empty()
+                                                               ? std::string("connecting…")
+                                                               : snap.error_message) |
+                                                     color(Color::Yellow)});
                                 }(),
                                 separator(),
                                 hbox({
