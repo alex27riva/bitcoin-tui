@@ -16,31 +16,31 @@ template <typename T> class Guarded {
 
     explicit Guarded(T v) : value_{std::move(v)} {}
 
-    T get() const {
+    T get() const EXCLUSIVE_LOCKS_REQUIRED(!mtx_) {
         STDLOCK(mtx_);
         return value_;
     }
 
-    operator T() const { return get(); }
+    operator T() const EXCLUSIVE_LOCKS_REQUIRED(!mtx_) { return get(); }
 
-    Guarded& operator=(const T& value) {
+    Guarded& operator=(const T& value) EXCLUSIVE_LOCKS_REQUIRED(!mtx_) {
         STDLOCK(mtx_);
         value_ = value;
         return *this;
     }
 
-    Guarded& operator=(T&& value) {
+    Guarded& operator=(T&& value) EXCLUSIVE_LOCKS_REQUIRED(!mtx_) {
         STDLOCK(mtx_);
         value_ = std::move(value);
         return *this;
     }
 
-    template <typename Fn> auto access(Fn&& fn) const {
+    template <typename Fn> auto access(Fn&& fn) const EXCLUSIVE_LOCKS_REQUIRED(!mtx_) {
         STDLOCK(mtx_);
         return fn(value_);
     }
 
-    template <typename Fn> auto update(Fn&& fn) {
+    template <typename Fn> auto update(Fn&& fn) EXCLUSIVE_LOCKS_REQUIRED(!mtx_) {
         STDLOCK(mtx_);
         return fn(value_);
     }
