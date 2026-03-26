@@ -21,6 +21,11 @@ AlignConsecutiveDeclarations:
   AcrossEmptyLines: false
   AcrossComments: false
 
+AlignConsecutiveMacros:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+
 # Keep pointer/reference qualifier with the type
 PointerAlignment: Left
 
