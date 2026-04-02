@@ -1,18 +1,22 @@
 #pragma once
 
+#include <concepts>
 #include <utility>
 
 #include "thread_safety.hpp"
 
 template <typename T> class Guarded {
-  private:
-    mutable StdMutex mtx_;
-    T value_         GUARDED_BY(mtx_);
-
   public:
-    Guarded()            = default;
-    Guarded(Guarded&& v) = default;
-    ~Guarded()           = default;
+    ~Guarded() = default;
+
+    Guarded(const Guarded&)            = delete;
+    Guarded& operator=(const Guarded&) = delete;
+    Guarded(Guarded&&)                 = delete;
+    Guarded& operator=(Guarded&&)      = delete;
+
+    Guarded()
+        requires std::default_initializable<T>
+        : value_{} {}
 
     explicit Guarded(T v) : value_{std::move(v)} {}
 
@@ -44,4 +48,8 @@ template <typename T> class Guarded {
         STDLOCK(mtx_);
         return fn(value_);
     }
+
+  private:
+    mutable StdMutex mtx_;
+    T value_         GUARDED_BY(mtx_);
 };
