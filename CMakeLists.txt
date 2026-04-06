@@ -88,6 +88,7 @@ add_executable(bitcoin-tui
   src/tabs/peers.cpp
   src/tabs/tools.cpp
   src/luatable.cpp
+  src/tabs/luatab.cpp
 )
 
 # src/ is on the include path so rpc_client.hpp can find json.hpp
