@@ -1,0 +1,155 @@
+#include "luatable.hpp"
+
+#include <cmath>
+#include <ctime>
+#include <map>
+
+std::optional<ColumnType> parse_column_type(const std::string& s) {
+    if (s.empty() || s == "string")
+        return ColumnType::String;
+    if (s == "number")
+        return ColumnType::Number;
+    if (s == "timestamp")
+        return ColumnType::Timestamp;
+    return std::nullopt;
+}
+
+std::string format_cell(ColumnType type, const CellData& data, int decimals) {
+    // Unset cells (default string) render as blank for numeric types
+    if (std::holds_alternative<std::string>(data) && std::get<std::string>(data).empty() &&
+        type != ColumnType::String) {
+        return {};
+    }
+    char buf[64];
+    switch (type) {
+    case ColumnType::Timestamp: {
+        double  value = std::holds_alternative<double>(data) ? std::get<double>(data) : 0.0;
+        auto    sec   = static_cast<time_t>(value);
+        double  frac  = value - sec;
+        std::tm tm{};
+        localtime_r(&sec, &tm);
+        int ms = static_cast<int>(frac * 1000);
+        snprintf(buf, sizeof(buf), "%02d:%02d:%02d.%03d", tm.tm_hour, tm.tm_min, tm.tm_sec, ms);
+        return buf;
+    }
+    case ColumnType::Number: {
+        if (decimals >= 0) {
+            double value = std::holds_alternative<double>(data) ? std::get<double>(data)
+                           : std::holds_alternative<int64_t>(data)
+                               ? static_cast<double>(std::get<int64_t>(data))
+                               : 0.0;
+            snprintf(buf, sizeof(buf), "%.*f", decimals, value);
+            return buf;
+        }
+        if (std::holds_alternative<int64_t>(data)) {
+            return std::to_string(std::get<int64_t>(data));
+        }
+        double value = std::holds_alternative<double>(data) ? std::get<double>(data) : 0.0;
+        if (value == std::floor(value)) {
+            snprintf(buf, sizeof(buf), "%.0f", value);
+        } else {
+            snprintf(buf, sizeof(buf), "%g", value);
+        }
+        return buf;
+    }
+    case ColumnType::String:
+        if (std::holds_alternative<std::string>(data))
+            return std::get<std::string>(data);
+        if (std::holds_alternative<int64_t>(data))
+            return std::to_string(std::get<int64_t>(data));
+        if (std::holds_alternative<double>(data)) {
+            snprintf(buf, sizeof(buf), "%g", std::get<double>(data));
+            return buf;
+        }
+        return {};
+    }
+    return {};
+}
+
+static std::vector<ColumnDef> ensure_key_column(std::vector<ColumnDef> columns,
+                                                const std::string&     key_column) {
+    for (const auto& c : columns) {
+        if (c.name == key_column)
+            return columns;
+    }
+    columns.insert(columns.begin(), {key_column, "", ColumnType::Number});
+    return columns;
+}
+
+LuaTable::LuaTable(const std::string& key_column, std::vector<ColumnDef> columns, std::string title,
+                   bool no_header)
+    : columns_(ensure_key_column(std::move(columns), key_column)), title_(std::move(title)),
+      no_header_(no_header), key_index_(col_index(key_column)),
+      rows_(RowData{std::set<Row, RowCompare>(RowCompare{key_index_}), 0}) {}
+
+size_t LuaTable::col_index(const std::string& name) const {
+    for (size_t i = 0; i < columns_.size(); ++i) {
+        if (columns_[i].name == name)
+            return i;
+    }
+    return columns_.size();
+}
+
+void LuaTable::update(const CellData& key, const std::map<std::string, CellValue>& data) {
+    Row row;
+    row.cells.resize(columns_.size());
+
+    // Set key column
+    row.cells[key_index_].data = key;
+
+    for (const auto& [name, cell] : data) {
+        size_t idx = col_index(name);
+        if (idx < columns_.size()) {
+            row.cells[idx] = cell;
+        }
+    }
+
+    rows_.update([&](auto& rd) {
+        // Remove existing row with this key
+        for (auto it = rd.rows.begin(); it != rd.rows.end(); ++it) {
+            if (it->cells[key_index_].data == key) {
+                rd.rows.erase(it);
+                break;
+            }
+        }
+        row.epoch = rd.current_epoch;
+        rd.rows.insert(std::move(row));
+    });
+}
+
+bool LuaTable::remove(const CellData& key) {
+    return rows_.update([&](auto& rd) {
+        for (auto it = rd.rows.begin(); it != rd.rows.end(); ++it) {
+            if (it->cells[key_index_].data == key) {
+                rd.rows.erase(it);
+                return true;
+            }
+        }
+        return false;
+    });
+}
+
+void LuaTable::start_refresh() {
+    rows_.update([](auto& rd) { ++rd.current_epoch; });
+}
+
+void LuaTable::finish_refresh() {
+    rows_.update([](auto& rd) {
+        std::erase_if(rd.rows, [&](const auto& row) { return row.epoch != rd.current_epoch; });
+    });
+}
+
+void LuaTable::set_header_info(CellValue info) {
+    rows_.update([&](auto& rd) { rd.header_info = std::move(info); });
+}
+
+std::vector<std::string> LuaTable::keys() const {
+    return rows_.access([&](const auto& rd) {
+        std::vector<std::string> result;
+        result.reserve(rd.rows.size());
+        for (const auto& row : rd.rows) {
+            result.push_back(format_cell(columns_[key_index_].type, row.cells[key_index_].data));
+        }
+        return result;
+    });
+}

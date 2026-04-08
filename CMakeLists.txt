@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.14)
-project(bitcoin-tui VERSION 0.8.0 LANGUAGES CXX)
+project(bitcoin-tui VERSION 0.8.0 LANGUAGES C CXX)
+
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+  set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+  set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,6 +25,56 @@ set(FTXUI_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(FTXUI_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(ftxui)
 
+# Abseil (required by RE2)
+FetchContent_Declare(
+  abseil-cpp
+  GIT_REPOSITORY https://github.com/abseil/abseil-cpp
+  GIT_TAG        20250814.2
+)
+set(ABSL_PROPAGATE_CXX_STD ON CACHE BOOL "" FORCE)
+set(ABSL_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(ABSL_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(abseil-cpp)
+
+# RE2
+FetchContent_Declare(
+  re2
+  GIT_REPOSITORY https://github.com/google/re2
+  GIT_TAG        2025-11-05
+)
+set(RE2_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(RE2_INSTALL OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(re2)
+
+# Lua 5.4
+FetchContent_Declare(
+  lua
+  GIT_REPOSITORY https://github.com/lua/lua
+  GIT_TAG        v5.4.8
+)
+FetchContent_MakeAvailable(lua)
+
+# Build Lua as a static library (no CMakeLists.txt in upstream)
+file(GLOB LUA_SOURCES ${lua_SOURCE_DIR}/*.c)
+list(REMOVE_ITEM LUA_SOURCES
+  ${lua_SOURCE_DIR}/lua.c     # standalone interpreter
+  ${lua_SOURCE_DIR}/luac.c    # standalone compiler
+  ${lua_SOURCE_DIR}/onelua.c  # single-file build
+)
+add_library(lua_static STATIC ${LUA_SOURCES})
+target_include_directories(lua_static PUBLIC ${lua_SOURCE_DIR})
+if(NOT WIN32)
+  target_compile_definitions(lua_static PRIVATE LUA_USE_POSIX)
+endif()
+
+# Sol2
+FetchContent_Declare(
+  sol2
+  GIT_REPOSITORY https://github.com/ThePhD/sol2
+  GIT_TAG        v3.5.0
+)
+FetchContent_MakeAvailable(sol2)
+
 add_executable(bitcoin-tui
   src/main.cpp
   src/render.cpp
@@ -31,6 +87,8 @@ add_executable(bitcoin-tui
   src/tabs/mempool.cpp
   src/tabs/peers.cpp
   src/tabs/tools.cpp
+  src/luatable.cpp
+  src/tabs/luatab.cpp
 )
 
 # src/ is on the include path so rpc_client.hpp can find json.hpp
@@ -44,6 +102,9 @@ target_link_libraries(bitcoin-tui PRIVATE
   ftxui::screen
   ftxui::dom
   ftxui::component
+  re2::re2
+  lua_static
+  sol2
 )
 
 if(WIN32)
