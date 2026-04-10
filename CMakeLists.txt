@@ -23,6 +23,7 @@ FetchContent_Declare(
 set(FTXUI_BUILD_DOCS     OFF CACHE BOOL "" FORCE)
 set(FTXUI_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(FTXUI_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
+set(FTXUI_INSTALL        OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(ftxui)
 
 # Abseil (required by RE2)
@@ -111,6 +112,8 @@ if(WIN32)
   target_link_libraries(bitcoin-tui PRIVATE ws2_32)
 endif()
 
+install(TARGETS bitcoin-tui RUNTIME DESTINATION bin COMPONENT runtime)
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   target_compile_options(bitcoin-tui PRIVATE -Wthread-safety)
 endif()
@@ -155,6 +158,11 @@ add_executable(test_guarded tests/test_guarded.cpp)
 target_include_directories(test_guarded PRIVATE src/)
 target_link_libraries(test_guarded PRIVATE Catch2::Catch2WithMain Threads::Threads)
 add_test(NAME test_guarded COMMAND test_guarded)
+
+if(WIN32)
+  target_link_libraries(test_rpc_config PRIVATE ws2_32)
+  target_link_libraries(test_bitcoind PRIVATE ws2_32)
+endif()
 
 add_executable(test_cli tests/test_cli.cpp)
 target_link_libraries(test_cli PRIVATE Catch2::Catch2WithMain)
