@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.14)
-project(bitcoin-tui VERSION 0.8.0 LANGUAGES C CXX)
+cmake_minimum_required(VERSION 3.22)
+project(bitcoin-tui VERSION 0.9.0 LANGUAGES C CXX)
 
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
@@ -13,12 +13,15 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include(FetchContent)
+if(POLICY CMP0135)
+  cmake_policy(SET CMP0135 NEW)
+endif()
 
 # FTXUI
 FetchContent_Declare(
   ftxui
-  GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI
-  GIT_TAG        v6.1.9
+  URL      https://github.com/ArthurSonzogni/FTXUI/archive/refs/tags/v6.1.9.tar.gz
+  URL_HASH SHA256=45819c1e54914783d4a1ca5633885035d74146778a1f74e1213cdb7b76340e71
 )
 set(FTXUI_BUILD_DOCS     OFF CACHE BOOL "" FORCE)
 set(FTXUI_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -29,8 +32,8 @@ FetchContent_MakeAvailable(ftxui)
 # Abseil (required by RE2)
 FetchContent_Declare(
   abseil-cpp
-  GIT_REPOSITORY https://github.com/abseil/abseil-cpp
-  GIT_TAG        20250814.2
+  URL      https://github.com/abseil/abseil-cpp/archive/refs/tags/20250814.2.tar.gz
+  URL_HASH SHA256=f9148fb00ec98a2396bdf875c99a78e6a70afa662b107862d92b285d857a8320
 )
 set(ABSL_PROPAGATE_CXX_STD ON CACHE BOOL "" FORCE)
 set(ABSL_BUILD_TESTING OFF CACHE BOOL "" FORCE)
@@ -40,8 +43,8 @@ FetchContent_MakeAvailable(abseil-cpp)
 # RE2
 FetchContent_Declare(
   re2
-  GIT_REPOSITORY https://github.com/google/re2
-  GIT_TAG        2025-11-05
+  URL      https://github.com/google/re2/archive/refs/tags/2025-11-05.tar.gz
+  URL_HASH SHA256=87f6029d2f6de8aa023654240a03ada90e876ce9a4676e258dd01ea4c26ffd67
 )
 set(RE2_BUILD_TESTING OFF CACHE BOOL "" FORCE)
 set(RE2_INSTALL OFF CACHE BOOL "" FORCE)
@@ -50,8 +53,8 @@ FetchContent_MakeAvailable(re2)
 # Lua 5.4
 FetchContent_Declare(
   lua
-  GIT_REPOSITORY https://github.com/lua/lua
-  GIT_TAG        v5.4.8
+  URL      https://github.com/lua/lua/archive/refs/tags/v5.4.8.tar.gz
+  URL_HASH SHA256=d85b70a65f43c5d2254944d58d625e822c8e2e10d9c6a3bd9b5b657e46376a19
 )
 FetchContent_MakeAvailable(lua)
 
@@ -71,8 +74,8 @@ endif()
 # Sol2
 FetchContent_Declare(
   sol2
-  GIT_REPOSITORY https://github.com/ThePhD/sol2
-  GIT_TAG        v3.5.0
+  URL      https://github.com/ThePhD/sol2/archive/refs/tags/v3.5.0.tar.gz
+  URL_HASH SHA256=86c0f6d2836b184a250fc2907091c076bf53c9603dd291eaebade36cc342e13c
 )
 FetchContent_MakeAvailable(sol2)
 
@@ -121,8 +124,8 @@ endif()
 # Catch2
 FetchContent_Declare(
   Catch2
-  GIT_REPOSITORY https://github.com/catchorg/Catch2
-  GIT_TAG        v3.7.1
+  URL      https://github.com/catchorg/Catch2/archive/refs/tags/v3.7.1.tar.gz
+  URL_HASH SHA256=c991b247a1a0d7bb9c39aa35faf0fe9e19764213f28ffba3109388e62ee0269c
 )
 FetchContent_MakeAvailable(Catch2)
 
