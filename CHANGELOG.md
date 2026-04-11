@@ -5,8 +5,10 @@ All notable changes to bitcoin-tui are documented here.
 ## [Unreleased]
 
 ### Added
-- **Mouse support** — click tabs to switch between them
-- **Lua scripting** — load custom tabs from Lua scripts with `--tab <path.lua>`; scripts can call a configurable set of RPC methods (allowlisted with `--allow-rpc`); optional debug log via `--debuglog`; bundled example: slow-block monitor tab
+- **Mouse support** - click tabs to switch between them
+- **Lua scripting** - load custom tabs from Lua scripts with `--tab <path.lua>`; scripts can call a configurable set of RPC methods (allowlisted with `--allow-rpc`); optional debug log via `--debuglog`; bundled example: slow-block monitor tab
+- **Config file support** - options can be set in a `config.toml` file (Linux: `$XDG_CONFIG_HOME/bitcoin-tui/` or `~/.config/bitcoin-tui/`; macOS: `~/Library/Application Support/bitcoin-tui/`; Windows: `%APPDATA%\bitcoin-tui\`); CLI flags override file values; path can be changed with `--config`
+- CLI11 replaces hand-rolled argument parsing; adds `--help` grouping, `--config` file support, and stricter validation of unknown flags
 
 ### Changed
 - FTXUI updated from v5.0.0 to v6.1.9
