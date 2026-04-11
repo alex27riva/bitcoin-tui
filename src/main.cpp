@@ -2,6 +2,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include <thread>
@@ -44,13 +45,20 @@ static std::string default_config_dir() {
         return std::string(home) + "/Library/Application Support/bitcoin-tui";
 #else
     const char* xdg = std::getenv("XDG_CONFIG_HOME");
-    if (xdg)
+    if (xdg && std::filesystem::exists(xdg))
         return std::string(xdg) + "/bitcoin-tui";
     const char* home = std::getenv("HOME");
     if (home)
         return std::string(home) + "/.config/bitcoin-tui";
 #endif
     return "";
+}
+
+static std::string config_file_if_exists(const std::string& dir) {
+    if (dir.empty())
+        return "";
+    std::filesystem::path p = std::filesystem::path(dir) / "config.toml";
+    return std::filesystem::exists(p) ? p.string() : "";
 }
 
 static std::string default_datadir() {
@@ -166,7 +174,10 @@ int Application::configure(int argc, char* argv[]) {
     auto* host_opt = app.add_option("-h,--host", cfg.host, "RPC host")
                          ->default_val("127.0.0.1")
                          ->group("Connection");
-    app.add_option("-p,--port", cfg.port, "RPC port")->default_val(8332)->group("Connection");
+    app.add_option("-p,--port", cfg.port, "RPC port")
+        ->default_val(8332)
+        ->check(CLI::Range(1, 65535))
+        ->group("Connection");
 
     // Authentication (cookie auth is used by default)
     std::string user_str, pass_str;
@@ -214,10 +225,9 @@ int Application::configure(int argc, char* argv[]) {
     );
     // clang-format on
 
-    // Config file
+    // Config file — only use a default when config.toml exists.
     std::string cfg_dir = default_config_dir();
-    app.set_config("--config", cfg_dir.empty() ? "" : cfg_dir + "/config.toml",
-                   "Read configuration from file")
+    app.set_config("--config", config_file_if_exists(cfg_dir), "Read configuration from file")
         ->transform(CLI::FileOnDefaultPath(cfg_dir));
 
     try {
