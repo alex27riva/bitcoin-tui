@@ -8,6 +8,11 @@
 #include <thread>
 #include <vector>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <shellapi.h>
+#endif
+
 #include <CLI/CLI.hpp>
 
 #include <ftxui/component/component.hpp>
@@ -685,7 +690,22 @@ int Application::run() const {
 }
 } // anonymous namespace
 
+#ifdef _WIN32
+static void ensure_terminal() {
+    DWORD mode;
+    if (!GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &mode)) {
+        // No interactive console — relaunch inside cmd.exe
+        std::string cmd = "/k \"" + std::string(GetCommandLineA()) + "\"";
+        ShellExecuteA(NULL, "open", "cmd.exe", cmd.c_str(), NULL, SW_SHOW);
+        exit(0);
+    }
+}
+#endif
+
 int main(int argc, char* argv[]) {
+#ifdef _WIN32
+    ensure_terminal();
+#endif
     try {
         return Application::run(argc, argv);
     } catch (const std::exception& e) {
