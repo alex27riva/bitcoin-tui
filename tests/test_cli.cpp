@@ -7,12 +7,12 @@
 #include <string>
 
 #ifdef _WIN32
-#  include <windows.h>
+#include <windows.h>
 #else
-#  include <csignal>
-#  include <thread>
-#  include <unistd.h>
-#  include <sys/wait.h>
+#include <csignal>
+#include <sys/wait.h>
+#include <thread>
+#include <unistd.h>
 #endif
 
 // Path to the bitcoin-tui binary, injected via CMake ENVIRONMENT.
@@ -85,7 +85,7 @@ static std::string shell_quote(const std::string& s) {
 
 static std::filesystem::path make_temp_dir() {
     auto ts = std::chrono::steady_clock::now().time_since_epoch().count();
-    auto p = std::filesystem::temp_directory_path() /
+    auto p  = std::filesystem::temp_directory_path() /
              ("bitcoin-tui-cli-test-" + std::to_string(static_cast<long long>(ts)) + "-" +
               std::to_string(std::rand()));
     std::filesystem::create_directories(p);
@@ -113,8 +113,8 @@ static int exit_code_with_home(const std::filesystem::path& home, const std::str
     // CI environments with a pre-set XDG_CONFIG_HOME don't redirect the binary
     // to a different config location and cause the TUI to start unexpectedly.
     return exit_code("HOME=" + shell_quote(home.string()) +
-                     " XDG_CONFIG_HOME=" + shell_quote((home / ".config").string()) +
-                     " " + binary() + " " + args + " >/dev/null 2>&1");
+                     " XDG_CONFIG_HOME=" + shell_quote((home / ".config").string()) + " " +
+                     binary() + " " + args + " >/dev/null 2>&1");
 }
 #endif
 
@@ -210,9 +210,8 @@ TEST_CASE("present default config is auto-loaded") {
     std::ofstream(cfg_path) << "refresh = \"not-a-number\"\n";
 
     int rc = exit_code_with_timeout(
-        "HOME=" + shell_quote(home.path.string()) +
-            " XDG_CONFIG_HOME=" + shell_quote((home.path / ".config").string()) +
-            " " + binary() + " >/dev/null 2>&1",
+        "HOME=" + shell_quote(home.path.string()) + " XDG_CONFIG_HOME=" +
+            shell_quote((home.path / ".config").string()) + " " + binary() + " >/dev/null 2>&1",
         std::chrono::seconds(2));
 
     CHECK(rc != kTimedOut);
